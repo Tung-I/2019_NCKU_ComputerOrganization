@@ -1,0 +1,52 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+dC:/Users/TONY/Desktop/Computer_Organization
+vtraffic_light
+!s110 1552393657
+!i10b 1
+!s100 1]GihnbjLD2n6L_dKURNC3
+IMhc_e:^lA=BPmY:Ek0GZb0
+Z0 VDg1SIo80bB@j0V0VzS_@n1
+Z1 dC:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src
+w1552393650
+8C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light.v
+FC:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light.v
+L0 1
+Z2 OP;L;10.4a;61
+r1
+!s85 0
+31
+!s108 1552393657.000000
+!s107 C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light.v|
+!s90 -reportprogress|300|-work|work|-stats=none|C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light.v|
+!s101 -O0
+!i113 1
+Z3 o-work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact -O0
+vtraffic_light_tb
+!s110 1552309204
+!i10b 1
+!s100 ^R[dF=gmRoZ;bnf7H_4`T0
+IIg81X]d`b=35E:=BS2MI@3
+R0
+R1
+w1552309143
+8C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light_tb.v
+FC:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light_tb.v
+L0 7
+R2
+r1
+!s85 0
+31
+!s108 1552309204.000000
+!s107 C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light_tb.v|
+!s90 -reportprogress|300|-work|work|-stats=none|C:/Users/IEUser/Desktop/Computer-Organization-master/F94044032/src/traffic_light_tb.v|
+!s101 -O0
+!i113 1
+R3
