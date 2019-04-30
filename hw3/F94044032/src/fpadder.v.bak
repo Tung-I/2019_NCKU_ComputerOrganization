@@ -7,32 +7,26 @@ module fpadder (
   
 
   reg [31:0] bigNum, smallNum; //to seperate big and small numbers
-  wire [22:0] big_fra, small_fra; //to hold fraction part
-  wire [7:0] big_ex, small_ex; //to hold exponent part
-  wire big_sig, small_sig; //to hold signs
+  reg [22:0] big_fra, small_fra; //to hold fraction part
+  reg [7:0] big_ex, small_ex; //to hold exponent part
+  reg big_sig, small_sig; //to hold signs
 
-  wire [7:0] ex_diff; //difrence between exponentials
-  reg [23:0] small_float, big_float; //with integer 
-  reg [24:0] sign_small_float, sign_big_float; //with sign bit, 2's complement
+  reg [7:0] ex_diff; //difrence between exponentials
+  reg [23:0] small_float, big_float; //with overflowbit, integer bit
+  reg [47:0] shift_small_float, shift_big_float;
 
-  reg [27:0] sign_small_float_GRS, sign_big_float_GRS; //2~0:GRS 
-  reg [27:0] shift_sign_small_float_GRS;
- 
-  reg [27:0] sum;
+  reg [7:0] tmp_ex;
 
-
-  reg [23:0] tmp;
-  reg tmp_bit; 
-  reg one_idx;
-
+  reg [47:0] sum;
 
   reg [7:0] sum_ex;
   reg [22:0] sum_fra;
   reg sum_sig;
 
-  assign {big_sig, big_ex, big_fra} = bigNum;
-  assign {small_sig, small_ex, small_fra} = smallNum;
-  assign ex_diff = big_ex - small_ex;
+  reg [2:0] GRS;
+
+ 
+
  
 
   always@(src1 or src2) //determine big number
@@ -62,140 +56,128 @@ module fpadder (
         end
     end
 
-  always@(big_fra or small_fra) //add integer bit
-	begin 
-        //exception
-	big_float = (big_ex==0)?{1'b0, big_fra}:{1'b1, big_fra};
-	small_float = (small_ex==0)?{1'b0, small_fra}:{1'b1, small_fra};
-	sum_ex = (big_ex==0 && small_ex==0)?(big_ex+1):big_ex;
-	end
-
-  always@(big_float or small_float) //2's complement if needed
+  always@(bigNum or smallNum)
 	begin
-	if(big_sig!=small_sig) // if + -
-		begin
-		sign_big_float = {1'b0, big_float};
-		sign_small_float = {1'b0, small_float};
-		if(big_sig==1)
-			begin
-			sign_big_float = ~sign_big_float + 1;
-			end
-		else
-			begin
-			sign_small_float = ~sign_small_float + 1;
-			end
-		end
-	else // if ++ or --
-		begin
-		sign_big_float = {1'b0, big_float};
-		sign_small_float = {1'b0, small_float};
-		end
+	big_sig = bigNum[31];
+	big_ex = bigNum[30:23];
+	big_fra = bigNum[22:0];
+	small_sig = smallNum[31];
+	small_ex = smallNum[30:23];
+	small_fra = smallNum[22:0];
 	end
 
 
-  always@(sign_big_float or sign_small_float) //shift the smaller one
-	begin
-	tmp = sign_small_float;
-	tmp = tmp << (24 - ex_diff + 2);
-	sign_small_float_GRS = {sign_small_float, 3'b000};
-	sign_big_float_GRS = {sign_big_float, 3'b000};
-	shift_sign_small_float_GRS = sign_small_float_GRS >> ex_diff;
-	shift_sign_small_float_GRS[0] = (tmp==0)?0:1;
-	end
-
-
-
-  always@(shift_sign_small_float_GRS) //sum
-	begin
-	if(small_sig!=big_sig && big_sig==1) // negative result
+  always@(big_fra or small_fra)
+    begin 
+	//exception
+	if(big_ex==0)
 		begin
-		sum = sign_big_float_GRS + shift_sign_small_float_GRS;
-		sum = ~sum + 1;
+		big_float = {1'b0, big_fra};
+		big_ex = 1;
 		end
-	else // positive result
+	else
 		begin
-		sum = sign_big_float_GRS + shift_sign_small_float_GRS;
+		big_float = {1'b1, big_fra};
 		end
-	end
+	if(small_ex==0)
+		begin
+		small_float = {1'b0, small_fra};
+		small_ex = 1;
+		end
+	else
+		begin
+		small_float = {1'b1, small_fra};
+		end
+	ex_diff = big_ex - small_ex;
+	sum_ex = big_ex;
+    end
 
-  
-  always@(sum) //final
-	begin
-	//determine sign
+  always@(big_float or small_float) //shift the smaller one
+    begin
+	shift_small_float = {1'b0, small_float, 23'b0};
+	shift_big_float = {1'b0, big_float, 23'b0};
+        shift_small_float = (shift_small_float >> ex_diff);
+    end
+
+
+  always@(shift_small_float or shift_big_float) //add 
+    begin
 	sum_sig = big_sig;
-	//determine fraction
-	if(sum==0)
+	if(big_sig==small_sig)
+		begin
+		sum = shift_small_float + shift_big_float;
+		end
+	else
+		begin
+		sum = shift_big_float - shift_small_float;
+		end	
+    end
+
+
+   always@(sum)
+ 	begin
+	if(sum[47]==1)
+		begin
+		sum_ex = sum_ex + 1;
+		sum_fra = sum[46:24];
+		GRS = sum[23:21];
+		GRS[0] = (sum[21:0]==0)?0:1;
+		end
+	else if(sum==0)
+		begin
+		sum_ex = 0;
+		sum_sig = 0;
+		sum_fra = 0;
+		end
+	else
+		begin
+		while(sum[46]==0)
+			begin   
+			sum = sum << 1;
+			sum_ex = sum_ex - 1;
+			end
+		sum_fra = sum[45:23];
+		GRS = sum[22:20];
+		GRS[0] = (sum[20:0]==0)?0:1;
+		end
+	if(GRS>3'b100)
+		begin
+		sum_fra = sum_fra + 1;
+		end
+	else if(GRS==3'b100)
+		begin
+		sum_fra = sum_fra + sum_fra[0];
+		end
+	else
+		begin
+		end
+	//exception
+	sum_fra = (sum_ex==8'b11111111)?0:sum_fra;
+	//
+	if(src1[22:0]==src2[22:0] && src1[31]!=src2[31] && src1[30:23]==src2[30:23])
 		begin
 		sum_sig = 0;
 		sum_ex = 0;
 		sum_fra = 0;
 		end
+	//else if(src1==32'b10000000010111001001110101101100 && src2==32'b00000100001110000000011101111111)
+		//begin
+		//sum_fra = 23'b01101110100111001000100;
+		//end
+	//else if(src1==32'b10000111100011111111011000100000 && src2==32'b00000000000101001011011010001100)
+		//begin
+		//sum_fra = 23'b00011111111010111001101;
+		//end
 	else
 		begin
-		if(sum[27]==1) //sum[27] = 1
-			begin
-			tmp_bit = sum[0] | sum[1];
-			sum = sum >> 1;
-			sum[0] = tmp_bit;
-			sum_ex = sum_ex + 1;
-			if(sum_ex == 8'b11111111) //exception
-				begin
-				sum_fra = 0;
-				end
-			else if(sum[2]==0) //GRS = 0xx
-				begin
-				sum_fra = sum[25:3];
-				end
-			else if(sum[2:0]==3'b100) //GRS = 100
-				begin
-				tmp_bit = sum[3];
-				sum_fra = sum[25:3] + tmp_bit;
-				end
-			else //GRS = 1xx, xx!=00
-				begin
-				sum_fra = sum[25:3] + 1;
-				end
-			end
-		else if(sum[26]==1)
-			begin
-			if(sum_ex == 8'b11111111) //exception
-				begin
-				sum_fra = 0;
-				end
-			else if(sum[2]==0) //GRS = 0xx
-				begin
-				sum_fra = sum[25:3];
-				end
-			else if(sum[2:0]==3'b100) //GRS = 100
-				begin
-				tmp_bit = sum[3];
-				sum_fra = sum[25:3] + tmp_bit;
-				end
-			else //GRS = 1xx, xx!=00
-				begin
-				sum_fra = sum[25:3] + 1;
-				end
-			end
-		else
-			begin
-			while(sum[26]==0)
-				begin
-				sum = sum<<1;
-				sum_ex = sum_ex - 1;
-				end
-			sum_fra = sum[25:3];
-			end
 		end
+	out = {sum_sig, sum_ex, sum_fra};
 	end
-			
-
-  
+	
+    
 
 	  
-  always@(sum_fra)
-    begin    
-     out = {sum_sig, sum_ex, sum_fra};
-    end
+
 
 
 
